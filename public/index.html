@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PE Progress Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <style>
 :root{
   /* ── Luxe Navy + Gold palette ── */
@@ -83,6 +83,13 @@ label.lbl:first-child{margin-top:0}
 /* Gold divider line */
 .gold-line{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:1rem 0;opacity:.4}
 </style>
+<!-- Credentials available globally before any HTML renders -->
+<script>
+// ✏️ EDIT THESE:
+var SUPABASE_URL  = "https://vsycqimhkzppautumsyo.supabase.co";
+var SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzeWNxaW1oa3pwcGF1dHVtc3lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MTMyMjEsImV4cCI6MjA5MzM4OTIyMX0.upBxit5d5nA6b9oVy8CbxIbzpO2m7_Df27IgKjg3l2k";
+var ADMIN_EMAIL   = "your-admin@example.com";
+</script>
 </head>
 <body>
 
@@ -107,8 +114,8 @@ label.lbl:first-child{margin-top:0}
     <div style="text-align:right;margin-top:4px">
       <button onclick="sendReset()" style="border:none;background:none;font-size:12px;color:var(--text2);cursor:pointer;padding:0">Forgot password?</button>
     </div>
-    <button class="primary" style="width:100%;margin-top:12px;padding:10px" onclick="doAuth()" id="auth-btn">Sign In</button>
-    <button style="width:100%;margin-top:8px;border:none;background:none;color:var(--text2)" onclick="toggleMode()" id="mode-btn">New teacher? Create account</button>
+    <button class="primary" style="width:100%;margin-top:12px;padding:10px" onclick="window.doAuth&&doAuth()" id="auth-btn">Sign In</button>
+    <button style="width:100%;margin-top:8px;border:none;background:none;color:var(--text2)" onclick="window.toggleMode&&toggleMode()" id="mode-btn">New teacher? Create account</button>
   </div>
 </div>
 
@@ -452,11 +459,6 @@ label.lbl:first-child{margin-top:0}
 </div>
 
 <script>
-// ✏️ EDIT THESE THREE LINES:
-const SUPABASE_URL  = "https://vsycqimhkzppautumsyo.supabase.co";
-const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzeWNxaW1oa3pwcGF1dHVtc3lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MTMyMjEsImV4cCI6MjA5MzM4OTIyMX0.upBxit5d5nA6b9oVy8CbxIbzpO2m7_Df27IgKjg3l2k";
-const ADMIN_EMAIL   = "chuynh@lasdschools.org"; // ✏️ your email
-
 // Safe Supabase init with error catch
 let sb;
 try {
@@ -989,6 +991,7 @@ async function sendOne(id){
     alert("Email failed: " + e.message + "\n\nMake sure:\n1. api/send-email.js is in your GitHub repo\n2. RESEND_API_KEY is set in Vercel → Project → Settings → Environment Variables");
   }
   renderEmailList();
+}
 
 async function sendAll(){
   const period = document.getElementById("email-period-filter")?.value || "all";
@@ -1546,17 +1549,17 @@ function setTab(t){
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
-(async()=>{
-  if(!sb) return; // already showing error screen
+window.addEventListener("DOMContentLoaded", async () => {
+  if(!sb) return;
   try{
     const{data}=await sb.auth.getSession();
     if(data.session?.user)await bootApp(data.session.user);
     sb.auth.onAuthStateChange((_,session)=>{if(!session&&ME)location.reload();});
   }catch(e){
     console.error("Boot error:",e);
-    alert$("login-alert","Connection error: "+e.message+". Check your internet and reload.");
+    alert$("login-alert","Connection error: "+e.message+". Reload the page.");
   }
-})();
+});
 </script>
 
 <!-- STUDENT PROFILE MODAL -->
