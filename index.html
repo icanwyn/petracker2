@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PE Progress Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  /* ── Luxe Navy + Gold palette ── */
+  --navy:#0D1B3E;--navy2:#162248;--navy3:#1E2F5A;--navy-lt:#243570;
+  --gold:#C9A84C;--gold-lt:#F0D98B;--gold-dk:#9B7A2A;--gold-glow:rgba(201,168,76,0.18);
+  --bg:#09122B;--surface:#162248;--surface2:#1E2F5A;--surface3:#243570;
+  --border:rgba(201,168,76,0.18);--border2:rgba(201,168,76,0.32);
+  --text:#F0E6C8;--text2:#A8B4CC;--text3:#6B7A99;
+  --red:#D4574A;--red-lt:rgba(212,87,74,0.15);
+  --purple:#7B6FD4;--purple-lt:rgba(123,111,212,0.18);
+  --green:#C9A84C;--green-lt:rgba(201,168,76,0.15);--green-dk:#9B7A2A;
+  font-family:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;background-image:repeating-linear-gradient(45deg,rgba(201,168,76,0.03) 0px,rgba(201,168,76,0.03) 1px,transparent 1px,transparent 40px),repeating-linear-gradient(-45deg,rgba(201,168,76,0.03) 0px,rgba(201,168,76,0.03) 1px,transparent 1px,transparent 40px)}
+input,select{font-family:inherit;font-size:13px;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;outline:none;width:100%;transition:border-color .15s,box-shadow .15s}
+input::placeholder{color:var(--text3)}
+input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-glow)}
+input:disabled{background:var(--surface);color:var(--text3);opacity:.6}
+select option{background:var(--navy2);color:var(--text)}
+button{font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text2);padding:7px 14px;transition:all .15s;letter-spacing:.01em}
+button:hover{background:var(--surface3);color:var(--text);border-color:var(--gold)}
+button:active{transform:scale(.98)}
+button.primary{background:linear-gradient(135deg,var(--gold) 0%,var(--gold-dk) 100%);color:#09122B;border-color:var(--gold);font-weight:600;letter-spacing:.04em}
+button.primary:hover{background:linear-gradient(135deg,var(--gold-lt) 0%,var(--gold) 100%);box-shadow:0 4px 16px var(--gold-glow)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem;box-shadow:0 2px 20px rgba(0,0,0,0.25)}
+.hidden{display:none!important}
+.row{display:flex;align-items:center;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1/-1}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;white-space:nowrap;letter-spacing:.03em}
+.badge-gold{background:linear-gradient(135deg,#F0D98B,#C9A84C);color:#09122B}
+.badge-silver{background:linear-gradient(135deg,#BEC8D8,#8A96AA);color:#09122B}
+.badge-bronze{background:linear-gradient(135deg,#D4A06A,#A06830);color:#fff}
+.badge-green{background:var(--gold-glow);color:var(--gold);border:1px solid rgba(201,168,76,0.3)}
+.badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.badge-red{background:var(--red-lt);color:var(--red)}
+.badge-purple{background:var(--purple-lt);color:var(--purple)}
+.alert{padding:9px 14px;border-radius:6px;font-size:13px;margin-bottom:10px;line-height:1.5;border:1px solid transparent}
+.alert-error{background:var(--red-lt);color:#F0A090;border-color:rgba(212,87,74,0.3)}
+.alert-success{background:var(--gold-glow);color:var(--gold-lt);border-color:rgba(201,168,76,0.3)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:var(--gold);border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase}
+td{padding:10px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(201,168,76,0.04)}
+.mono{font-family:'DM Mono',monospace;letter-spacing:.03em}
+.spinner{width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:2rem auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;border:1.5px solid var(--border2)}
+#header{background:linear-gradient(90deg,var(--navy) 0%,var(--navy2) 100%);border-bottom:1px solid var(--border2);padding:.875rem 1.5rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,0.4)}
+#header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+#main{max-width:960px;margin:0 auto;padding:1.5rem 1.25rem}
+.nav-btn{padding:6px 16px;border-radius:99px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:500}
+.nav-btn.active{background:var(--gold-glow);color:var(--gold);border-color:var(--border2);box-shadow:0 0 12px var(--gold-glow)}
+.nav-btn.admin-active{background:var(--purple-lt);color:var(--purple);border-color:var(--purple)}
+.tab-row{display:flex;gap:3px;background:var(--surface2);padding:4px;border-radius:9px;margin-bottom:1rem;border:1px solid var(--border)}
+.tab-btn{flex:1;padding:7px 6px;border:none;background:transparent;color:var(--text3);border-radius:6px;font-size:11px;letter-spacing:.03em;text-transform:uppercase;font-weight:500;white-space:nowrap;text-align:center;min-width:0}
+.tab-btn.active{background:var(--gold-glow);color:var(--gold);box-shadow:inset 0 0 0 1px rgba(201,168,76,0.35);font-weight:600}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:all .2s}
+.drop-zone:hover{border-color:var(--gold);background:var(--gold-glow)}
+.info{background:var(--gold-glow);border:1px solid rgba(201,168,76,0.25);border-radius:6px;padding:9px 13px;font-size:12px;color:var(--gold-lt);margin-bottom:12px}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:1.5rem}
+.podium-col{display:flex;flex-direction:column;align-items:center;flex:1;max-width:180px}
+.podium-bar{width:100%;border-radius:8px 8px 0 0;border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+label.lbl{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;margin-top:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:500}
+label.lbl:first-child{margin-top:0}
+#login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:var(--bg);background-image:repeating-linear-gradient(45deg,rgba(201,168,76,0.04) 0px,rgba(201,168,76,0.04) 1px,transparent 1px,transparent 40px),repeating-linear-gradient(-45deg,rgba(201,168,76,0.04) 0px,rgba(201,168,76,0.04) 1px,transparent 1px,transparent 40px)}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.stat-num{font-size:26px;font-weight:600;line-height:1;margin-top:4px;color:var(--gold)}
+.stat-label{font-size:12px;color:var(--text2);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+/* Gold divider line */
+.gold-line{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:1rem 0;opacity:.4}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════
+  ✏️  ONLY EDIT THESE TWO THINGS:
+  1. Your Supabase credentials (from Settings → API)
+  2. Your admin email (the account that sees Admin tab)
+════════════════════════════════════════════════ -->
+<script>
+const SUPABASE_URL = "https://vsycqimhkzppautumsyo.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzeWNxaW1oa3pwcGF1dHVtc3lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MTMyMjEsImV4cCI6MjA5MzM4OTIyMX0.upBxit5d5nA6b9oVy8CbxIbzpO2m7_Df27IgKjg3l2k";
+const ADMIN_EMAIL  = "your-admin@example.com"; // ✏️ change this to your email
+</script>
+<!-- ════════════════════════════════════════════════ -->
+
+<!-- LOGIN -->
+<div id="login-wrap">
+  <div class="card" style="width:100%;max-width:420px;border-color:var(--border2);box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(201,168,76,0.1)">
+    <div style="text-align:center;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+      <div style="font-size:32px;margin-bottom:8px">🏆</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:var(--gold);letter-spacing:.06em">PE PROGRESS TRACKER</div>
+      <div id="login-subtitle" style="font-size:12px;color:var(--text2);margin-top:4px;letter-spacing:.08em;text-transform:uppercase">Teacher Sign In</div>
+    </div>
+    <div id="login-alert"></div>
+    <div id="signup-extra" class="hidden">
+      <label class="lbl">Your name</label><input id="s-name" placeholder="Coach Rivera"/>
+      <label class="lbl">School name</label><input id="s-school" placeholder="Lincoln High School"/>
+    </div>
+    <label class="lbl">Email</label><input id="l-email" type="email" placeholder="coach@school.edu"/>
+    <label class="lbl">Password</label>
+    <input id="l-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()"/>
+    <div style="text-align:right;margin-top:4px">
+      <button onclick="sendReset()" style="border:none;background:none;font-size:12px;color:var(--text2);cursor:pointer;padding:0">Forgot password?</button>
+    </div>
+    <button class="primary" style="width:100%;margin-top:12px;padding:10px" onclick="doAuth()" id="auth-btn">Sign In</button>
+    <button style="width:100%;margin-top:8px;border:none;background:none;color:var(--text2)" onclick="toggleMode()" id="mode-btn">New teacher? Create account</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <div id="header">
+    <div style="width:38px;height:38px;border-radius:9px;background:var(--gold-glow);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏆</div>
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:17px;color:var(--gold);letter-spacing:.08em">PE PROGRESS TRACKER</div>
+      <div id="header-sub" style="font-size:11px;color:var(--text2);letter-spacing:.04em">Loading…</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <button class="nav-btn active" id="nav-teacher"     onclick="setView('teacher')">🏫 Teacher</button>
+      <button class="nav-btn"        id="nav-student"     onclick="setView('student')">🎽 Student</button>
+      <button class="nav-btn"        id="nav-leaderboard" onclick="setView('leaderboard')">🏆 Leaderboard</button>
+      <button class="nav-btn"        id="nav-profile"     onclick="setView('profile')">👤 Profile</button>
+      <button class="nav-btn hidden" id="nav-admin"       onclick="setView('admin')">⚙️ Admin</button>
+      <button style="font-size:12px;color:var(--text2);border:none;background:none" onclick="doSignOut()">Sign out</button>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <!-- ══ TEACHER ══════════════════════════════════════════════ -->
+    <div id="view-teacher">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">
+        <div class="tab-row">
+          <button class="tab-btn active" id="tab-roster"   onclick="setTab('roster')">Roster</button>
+          <button class="tab-btn"        id="tab-upload"   onclick="setTab('upload')">CSV Upload</button>
+          <button class="tab-btn"        id="tab-add"      onclick="setTab('add')">Add Student</button>
+          <button class="tab-btn"        id="tab-progress" onclick="setTab('progress')">Progress</button>
+          <button class="tab-btn"        id="tab-skills"   onclick="setTab('skills')">⚡ Skills</button>
+          <button class="tab-btn"        id="tab-share"    onclick="setTab('share')">🤝 Share</button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="openQRModal()" style="flex:1;font-size:12px;padding:7px 10px">📱 QR Codes</button>
+          <button onclick="openEmailModal()" style="flex:1;font-size:12px;padding:7px 10px">✉ Email Codes</button>
+          <button onclick="loadData()" style="flex:1;font-size:12px;padding:7px 10px">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div id="pane-roster" class="card">
+        <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <select id="roster-period" onchange="renderRoster()" style="width:auto"><option value="all">All Periods</option></select>
+          <span id="roster-count" style="font-size:13px;color:var(--text2)"></span>
+          <button onclick="resetPeriodCodes()" style="margin-left:auto;font-size:12px;padding:5px 12px;color:var(--gold);background:var(--gold-glow);border-color:rgba(201,168,76,0.3)" title="Reset all codes for selected period">↻ Reset Period Codes</button>
+        </div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Student</th><th>Grade</th><th>Period</th><th>Access Code &nbsp;<span style="font-weight:400;color:var(--text3)">↻ to reset</span></th><th>Skills Logged</th><th>Actions</th></tr></thead>
+          <tbody id="roster-body"><tr><td colspan="5" style="text-align:center;padding:2rem"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+      </div>
+
+      <div id="pane-upload" class="hidden">
+        <div class="card" style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:10px">Upload CSV Roster</div>
+          <div class="info">Required columns: <span class="mono">first, last, grade, gender, email, period</span></div>
+          <button onclick="dlTemplate()" style="margin-bottom:12px;font-size:12px">⬇ Download Template</button>
+          <div class="drop-zone" onclick="document.getElementById('csv-file').click()">
+            <div style="font-size:28px;margin-bottom:8px">📂</div>
+            <div style="font-weight:500;margin-bottom:4px">Click to choose CSV file</div>
+            <div style="font-size:12px;color:var(--text2)">Duplicate emails are skipped</div>
+          </div>
+          <input type="file" id="csv-file" accept=".csv,.txt" style="display:none" onchange="readCSV(this)"/>
+          <div id="csv-alert" style="margin-top:8px"></div>
+        </div>
+        <div id="csv-preview" class="card hidden">
+          <div class="row" style="margin-bottom:12px">
+            <span id="csv-count" style="font-weight:500;font-size:14px"></span>
+            <button class="primary" style="margin-left:auto" onclick="importCSV()">Confirm Import</button>
+            <button onclick="cancelCSV()">Cancel</button>
+          </div>
+          <div id="csv-list" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+
+      <div id="pane-add" class="card hidden">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Add Student</div>
+        <div id="add-alert"></div>
+        <div class="grid2">
+          <div><label class="lbl">First Name</label><input id="a-first"/></div>
+          <div><label class="lbl">Last Name</label><input id="a-last"/></div>
+          <div class="full"><label class="lbl">Email (optional)</label><input id="a-email" type="email" placeholder="student@school.edu"/></div>
+          <div><label class="lbl">Grade</label><select id="a-grade"><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
+          <div><label class="lbl">Gender</label><select id="a-gender"><option value="M">Male</option><option value="F">Female</option><option value="NB">Non-binary</option></select></div>
+          <div><label class="lbl">Period</label><select id="a-period"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+        </div>
+        <button class="primary" style="margin-top:14px" onclick="addStudent()">Add Student</button>
+        <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px">Recently added</div>
+          <div id="recent-added"></div>
+        </div>
+      </div>
+
+      <div id="pane-progress" class="hidden">
+        <div class="row" style="margin-bottom:12px;flex-wrap:wrap">
+          <select id="prog-skill" onchange="renderProgress()" style="width:auto"></select>
+          <select id="prog-period" onchange="renderProgress()" style="width:auto"><option value="all">All Periods</option></select>
+        </div>
+        <div class="card"><div style="overflow-x:auto"><table>
+          <thead><tr><th>Student</th><th>Trend</th><th>Latest</th><th>Change</th><th>Rank</th></tr></thead>
+          <tbody id="prog-body"></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- SKILLS MANAGER -->
+      <div id="pane-skills" class="hidden">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+
+          <!-- Existing skills list -->
+          <div class="card" style="flex:1;min-width:260px">
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px">Current Skills</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Drag to reorder. Click × to delete.</div>
+            <div id="skills-list" style="display:flex;flex-direction:column;gap:8px"></div>
+            <div id="skills-alert" style="margin-top:10px"></div>
+          </div>
+
+          <!-- Add new skill -->
+          <div class="card" style="flex:1;min-width:260px">
+            <div style="font-weight:600;font-size:14px;margin-bottom:14px">Add New Skill</div>
+            <div id="new-skill-alert"></div>
+            <label class="lbl">Skill Name</label>
+            <input id="sk-name" placeholder="e.g. Vertical Jump"/>
+            <label class="lbl">Unit of Measurement</label>
+            <input id="sk-unit" placeholder="e.g. inches, sec, reps"/>
+            <label class="lbl" style="margin-top:12px">Scoring Direction</label>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <button id="sk-dir-high" onclick="setSkDir(false)" class="primary" style="flex:1;font-size:12px">↑ Higher = Better<br><span style="font-weight:400;font-size:11px">(throws, push-ups)</span></button>
+              <button id="sk-dir-low"  onclick="setSkDir(true)"  style="flex:1;font-size:12px">↓ Lower = Better<br><span style="font-weight:400;font-size:11px">(run times)</span></button>
+            </div>
+            <button class="primary" style="width:100%;margin-top:16px;padding:9px" onclick="addSkill()">Add Skill</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHARE / MERGE -->
+      <div id="pane-share" class="hidden">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+
+          <!-- Invite a teacher -->
+          <div class="card" style="flex:1;min-width:260px">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--gold);margin-bottom:4px">🤝 Share Your Roster</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Invite another PE teacher to view your students and leaderboards. They can see your roster but cannot edit it.</div>
+            <div id="share-alert"></div>
+            <label class="lbl">Co-teacher's email</label>
+            <input id="share-email" type="email" placeholder="othercoach@school.edu"/>
+            <button class="primary" style="width:100%;margin-top:12px;padding:9px" onclick="shareWithTeacher()">Send Invite</button>
+
+            <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Currently sharing with</div>
+              <div id="share-outbound-list"><div style="color:var(--text3);font-size:13px">Loading…</div></div>
+            </div>
+          </div>
+
+          <!-- Shared with me -->
+          <div class="card" style="flex:1;min-width:260px">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--gold);margin-bottom:4px">📥 Shared With Me</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Other teachers who have shared their rosters with you. Toggle on to include their students in your leaderboard.</div>
+            <div id="share-inbound-list"><div style="color:var(--text3);font-size:13px">Loading…</div></div>
+
+            <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">School Leaderboard</div>
+              <div style="font-size:13px;color:var(--text2);margin-bottom:10px">When sharing is active, the Leaderboard tab shows the best across all merged rosters.</div>
+              <div id="merged-count" style="font-size:13px;color:var(--gold)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STUDENT PORTAL ════════════════════════════════════════ -->
+    <div id="view-student" class="hidden" style="max-width:500px;margin:0 auto">
+      <div id="p-select">
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">Select your name</div>
+        <div style="color:var(--text2);font-size:13px;margin-bottom:14px">Find your name below, then enter your animal code.</div>
+
+        <!-- Search + filters -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+          <input id="p-search" placeholder="🔍 Type your name to search…" oninput="renderStudentList()" style="font-size:15px;padding:11px 14px;border-radius:10px"/>
+          <div style="display:flex;gap:8px">
+            <select id="p-period-filter" onchange="renderStudentList()" style="flex:1;width:auto">
+              <option value="all">All Periods</option>
+            </select>
+            <select id="p-sort" onchange="renderStudentList()" style="flex:1;width:auto">
+              <option value="first">A–Z by First Name</option>
+              <option value="last">A–Z by Last Name</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick A–Z letter jump -->
+        <div id="p-alpha" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:10px"></div>
+        <div id="p-count" style="font-size:12px;color:var(--text2);margin-bottom:8px"></div>
+        <div id="p-list" style="display:flex;flex-direction:column;gap:6px;max-height:58vh;overflow-y:auto;padding-right:2px"></div>
+      </div>
+      <div id="p-verify" class="card hidden">
+        <button onclick="portalBack()" style="border:none;background:none;color:var(--text2);cursor:pointer;padding:0;margin-bottom:16px;font-size:13px">← Back</button>
+        <div class="row" style="margin-bottom:20px">
+          <div id="v-avatar" class="avatar" style="width:48px;height:48px;font-size:16px"></div>
+          <div><div id="v-name" style="font-weight:600;font-size:16px"></div><div style="font-size:13px;color:var(--text2)">Enter your animal code</div></div>
+        </div>
+        <label class="lbl">Access code</label>
+        <input id="v-code" class="mono" placeholder="e.g. BlueTiger42" style="font-size:15px;margin-bottom:8px" onkeydown="if(event.key==='Enter')verifyCode()"/>
+        <div id="v-error" class="hidden" style="color:var(--red);font-size:13px;margin-bottom:8px"></div>
+        <button class="primary" style="width:100%;padding:10px" onclick="verifyCode()">Confirm Identity</button>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Lost your code? Ask your teacher.</div>
+      </div>
+      <div id="p-dash" class="hidden">
+        <div class="row" style="margin-bottom:1.25rem">
+          <div id="d-avatar" class="avatar" style="width:44px;height:44px;font-size:15px"></div>
+          <div><div id="d-name" style="font-weight:600;font-size:16px"></div><div id="d-sub" style="font-size:13px;color:var(--text2)"></div></div>
+          <button style="margin-left:auto;font-size:12px" onclick="portalOut()">Sign out</button>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:12px">Log this week's scores</div>
+          <div id="entry-fields"></div>
+          <div id="entry-ok" class="hidden alert alert-success" style="text-align:center;font-weight:500">✓ Scores saved!</div>
+          <button class="primary" id="submit-btn" style="width:100%;padding:10px;margin-top:4px" onclick="submitScores()">Submit Scores</button>
+        </div>
+        <div class="card">
+          <div style="font-weight:600;font-size:14px;margin-bottom:12px">Your progress</div>
+          <div id="p-progress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LEADERBOARD ═══════════════════════════════════════════ -->
+    <div id="view-leaderboard" class="hidden">
+      <div class="row" style="margin-bottom:1.25rem;flex-wrap:wrap">
+        <select id="lb-skill" onchange="renderLB()" style="width:auto"></select>
+        <select id="lb-period" onchange="renderLB()" style="width:auto"><option value="all">School-wide</option></select>
+        <span id="lb-tag"></span>
+      </div>
+      <div id="lb-podium" class="podium"></div>
+      <div class="card"><div style="overflow-x:auto"><table>
+        <thead><tr><th>Rank</th><th>Student</th><th>Period</th><th>Score</th><th>Trend</th><th>Improvement</th></tr></thead>
+        <tbody id="lb-body"></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- ══ PROFILE ═══════════════════════════════════════════════ -->
+    <div id="view-profile" class="hidden" style="max-width:560px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:1.25rem">👤 My Profile</div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:14px">Personal Info</div>
+        <div id="profile-alert"></div>
+        <label class="lbl">Full Name</label>
+        <input id="p-name" placeholder="e.g. Coach Rivera"/>
+        <label class="lbl">School Name</label>
+        <input id="p-school" placeholder="e.g. Lincoln High School"/>
+        <label class="lbl">Email <span style="color:var(--text3);font-size:11px">(read-only)</span></label>
+        <input id="p-email" disabled/>
+        <button class="primary" style="margin-top:14px" onclick="saveProfile()">Save Profile</button>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Change Password</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">We'll send a reset link to your email address.</div>
+        <div id="pw-alert"></div>
+        <button onclick="sendResetFromProfile()">📧 Send Password Reset Email</button>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">My Stats</div>
+        <div id="profile-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+      </div>
+    </div>
+
+    <!-- ══ ADMIN DASHBOARD ════════════════════════════════════════ -->
+    <div id="view-admin" class="hidden">
+      <div class="row" style="margin-bottom:1.25rem;flex-wrap:wrap">
+        <div>
+          <div style="font-size:18px;font-weight:600">⚙️ Admin Dashboard</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Platform overview · admin only</div>
+        </div>
+        <button onclick="loadAdmin()" style="margin-left:auto">↻ Refresh</button>
+      </div>
+
+      <div id="admin-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem"></div>
+
+      <div class="tab-row">
+        <button class="tab-btn active" id="atab-users"    onclick="setAdminTab('users')">All Teachers</button>
+        <button class="tab-btn"        id="atab-activity" onclick="setAdminTab('activity')">Recent Signups</button>
+        <button class="tab-btn"        id="atab-reset"    onclick="setAdminTab('reset')">Password Resets</button>
+      </div>
+
+      <div id="apane-users" class="card">
+        <div class="row" style="margin-bottom:12px">
+          <input id="admin-search" placeholder="Search by name, email, or school…" oninput="filterAdminUsers()" style="max-width:320px"/>
+          <span id="admin-user-count" style="font-size:13px;color:var(--text2)"></span>
+        </div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr><th>Teacher</th><th>School</th><th>Students</th><th>Entries</th><th>Joined</th><th>Role</th><th>Action</th></tr></thead>
+          <tbody id="admin-users-body"></tbody>
+        </table></div>
+      </div>
+
+      <div id="apane-activity" class="card hidden">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Recent Signups</div>
+        <div id="activity-list"></div>
+      </div>
+
+      <div id="apane-reset" class="card hidden">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Send Password Reset</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Send a reset email to any teacher account.</div>
+        <div id="reset-alert"></div>
+        <div class="row">
+          <input id="reset-email" type="email" placeholder="teacher@school.edu" style="flex:1"/>
+          <button class="primary" onclick="adminSendReset()">Send Reset Email</button>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:14px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px">Or click a teacher below:</div>
+          <div id="quick-reset-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- EMAIL MODAL -->
+<div id="modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.38);z-index:900;display:flex;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:100%;max-width:520px;max-height:86vh;overflow-y:auto;padding:0">
+    <div class="row" style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)">
+      <span style="font-weight:600;font-size:15px">✉ Email Access Codes</span>
+      <button onclick="closeModal()" style="margin-left:auto;border:none;background:none;font-size:20px;color:var(--text2);cursor:pointer">×</button>
+    </div>
+    <div style="padding:1.25rem">
+      <div class="info" id="email-info">Emails send via Resend. Students without an email address are skipped.</div>
+      <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <select id="email-period-filter" onchange="renderEmailList()" style="width:auto;font-size:13px">
+          <option value="all">All Periods</option>
+        </select>
+        <span id="email-count" style="font-size:13px;color:var(--text2)"></span>
+        <button style="margin-left:auto" onclick="sendAll()">Send All</button>
+      </div>
+      <div id="email-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── State ─────────────────────────────────────────────────────
+let ME=null, profile=null;
+let students=[], skills=[], entries={};
+let csvRows=[], sentEmails=[], portalStudent=null;
+let adminUsers=[], isSignup=false;
+
+// ── Code gen ──────────────────────────────────────────────────
+// Short animal names + 2-digit number = easy iPad entry e.g. "Fox42"
+const ANIMALS=["Fox","Bear","Wolf","Hawk","Lion","Deer","Owl","Panda","Tiger","Eagle","Lynx","Shark"];
+function makeCode(f,l,g){
+  const a=ANIMALS[(f.charCodeAt(0)+l.charCodeAt(0))%ANIMALS.length];
+  const n=((g*13+f.length*7)%90)+10;
+  return `${a}${n}`;
+}
+// Generate a fresh random code (for resets)
+function randomCode(){
+  const a=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  const n=Math.floor(Math.random()*90)+10;
+  return `${a}${n}`;
+}
+
+// ── Avatars ───────────────────────────────────────────────────
+const AB=["#1E2F5A","#243570","#162248","#1A2850","#0D1B3E","#243060"];
+const AT=["#C9A84C","#F0D98B","#C9A84C","#F0D98B","#C9A84C","#F0D98B"];
+function avStyle(f,l,sz){const h=(f.charCodeAt(0)*7+l.charCodeAt(0)*13)%6;return `width:${sz}px;height:${sz}px;background:${AB[h]};color:${AT[h]};font-size:${Math.round(sz*.35)}px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;flex-shrink:0`;}
+function avHTML(f,l,sz=28){return `<div class="avatar" style="${avStyle(f,l,sz)}">${f[0]}${l[0]}</div>`;}
+
+// ── Sparkline ─────────────────────────────────────────────────
+function spark(vals,lb){
+  if(!vals||vals.length<2)return '<span style="color:var(--text3)">—</span>';
+  const w=72,h=28,p=4,mn=Math.min(...vals),mx=Math.max(...vals),r=mx-mn||1;
+  const pts=vals.map((v,i)=>`${p+(i/(vals.length-1))*(w-p*2)},${p+((lb?v-mn:mx-v)/r)*(h-p*2)}`).join(" ");
+  const ok=lb?vals[vals.length-1]<vals[0]:vals[vals.length-1]>vals[0];
+  const c=ok?"#C9A84C":"#D4574A";const lp=pts.split(" ").at(-1).split(",");
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle"><polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${lp[0]}" cy="${lp[1]}" r="2.5" fill="${c}"/></svg>`;
+}
+
+// ── Misc utils ────────────────────────────────────────────────
+function alert$(id,msg,type="error"){const el=document.getElementById(id);if(el)el.innerHTML=msg?`<div class="alert alert-${type}">${msg}</div>`:"";}
+function fmtDate(iso){if(!iso)return "—";return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}
+function rankBadge(r){if(!r)return "—";if(r===1)return '<span class="badge badge-gold">#1</span>';if(r===2)return '<span class="badge badge-silver">#2</span>';if(r===3)return '<span class="badge badge-bronze">#3</span>';return `<span style="color:var(--text2)">#${r}</span>`;}
+function getVals(sid,skid){return entries[sid]?.[skid]||[];}
+function getLastVal(sid,skid){const v=getVals(sid,skid);return v.length?v[v.length-1]:null;}
+function getImp(sid,skid){const v=getVals(sid,skid);if(v.length<2)return null;const sk=skills.find(s=>s.id===skid);const d=v[v.length-1]-v[0];return{pct:((Math.abs(d)/Math.abs(v[0]))*100).toFixed(1),ok:sk?.lower_better?d<0:d>0};}
+function getRanked(skid,period="all"){
+  const sk=skills.find(s=>s.id===skid);
+  // Combine own students + merged (shared) students for leaderboard
+  const all=[...students,...mergedStudents.filter(ms=>!students.find(s=>s.id===ms.id))];
+  return all.filter(s=>period==="all"||s.period===+period).map(s=>({...s,val:getLastVal(s.id,skid)})).filter(s=>s.val!==null).sort((a,b)=>sk?.lower_better?a.val-b.val:b.val-a.val);
+}
+function getRank(sid,skid){const i=getRanked(skid).findIndex(s=>s.id===sid);return i===-1?null:i+1;}
+function isAdmin(){return ME?.email===ADMIN_EMAIL;}
+
+// ── AUTH ──────────────────────────────────────────────────────
+function toggleMode(){
+  isSignup=!isSignup;
+  document.getElementById("signup-extra").classList.toggle("hidden",!isSignup);
+  document.getElementById("login-subtitle").textContent=isSignup?"Create teacher account":"Teacher sign in";
+  document.getElementById("auth-btn").textContent=isSignup?"Create Account":"Sign In";
+  document.getElementById("mode-btn").textContent=isSignup?"Already have an account? Sign in":"New teacher? Create account";
+  alert$("login-alert","");
+}
+
+async function doAuth(){
+  const email=document.getElementById("l-email").value.trim();
+  const pass=document.getElementById("l-pass").value;
+  const btn=document.getElementById("auth-btn");
+  alert$("login-alert","");btn.disabled=true;btn.textContent="Please wait…";
+  if(isSignup){
+    const name=document.getElementById("s-name").value.trim();
+    const school=document.getElementById("s-school").value.trim();
+    const{data,error}=await sb.auth.signUp({email,password:pass});
+    if(error){alert$("login-alert",error.message);btn.disabled=false;btn.textContent="Create Account";return;}
+    if(data.user){
+      await sb.from("teachers").upsert([{id:data.user.id,email,name,school}],{onConflict:"id"});
+    }
+    alert$("login-alert","Account created! Check your email to confirm, then sign in.","success");
+    toggleMode();btn.disabled=false;btn.textContent="Sign In";
+  } else {
+    const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error){alert$("login-alert",error.message);btn.disabled=false;btn.textContent="Sign In";return;}
+    await sb.from("teachers").upsert([{id:data.user.id,email}],{onConflict:"id"});
+    await bootApp(data.user);
+  }
+}
+
+async function sendReset(){
+  const email=document.getElementById("l-email").value.trim();
+  if(!email){alert$("login-alert","Enter your email first.");return;}
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+  alert$("login-alert",error?error.message:"Reset email sent! Check your inbox.","success");
+}
+
+async function bootApp(user){
+  ME=user;
+  document.getElementById("login-wrap").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  if(isAdmin())document.getElementById("nav-admin").classList.remove("hidden");
+  await loadProfile();
+  await loadData();
+  await loadMergedStudents();
+}
+
+async function doSignOut(){await sb.auth.signOut();location.reload();}
+
+// ── PROFILE ───────────────────────────────────────────────────
+async function loadProfile(){
+  const{data}=await sb.from("teachers").select("*").eq("id",ME.id).single();
+  profile=data||{};
+  updateHeaderSub();
+  document.getElementById("p-name").value=profile.name||"";
+  document.getElementById("p-school").value=profile.school||"";
+  document.getElementById("p-email").value=ME.email;
+}
+
+function updateHeaderSub(){
+  const name=profile?.name||ME?.email||"";
+  const school=profile?.school||"";
+  document.getElementById("header-sub").textContent=name+(school?" · "+school:"");
+}
+
+async function saveProfile(){
+  const name=document.getElementById("p-name").value.trim();
+  const school=document.getElementById("p-school").value.trim();
+  const{error}=await sb.from("teachers").upsert([{id:ME.id,email:ME.email,name,school}],{onConflict:"id"});
+  if(error){alert$("profile-alert",error.message);return;}
+  profile={...profile,name,school};
+  updateHeaderSub();
+  alert$("profile-alert","✓ Profile saved!","success");
+  setTimeout(()=>alert$("profile-alert",""),3000);
+}
+
+async function sendResetFromProfile(){
+  const{error}=await sb.auth.resetPasswordForEmail(ME.email,{redirectTo:window.location.href});
+  alert$("pw-alert",error?error.message:"✓ Reset email sent to "+ME.email,error?"error":"success");
+}
+
+function renderProfileStats(){
+  const totalEntries=Object.values(entries).reduce((s,x)=>s+Object.values(x).reduce((s2,v)=>s2+v.length,0),0);
+  document.getElementById("profile-stats").innerHTML=[
+    {n:students.length,l:"Students",icon:"🎽"},
+    {n:skills.length,l:"Skills",icon:"📋"},
+    {n:totalEntries,l:"Score Entries",icon:"📊"},
+  ].map(s=>`<div class="stat-card"><div style="font-size:20px">${s.icon}</div><div class="stat-num">${s.n}</div><div class="stat-label">${s.l}</div></div>`).join("");
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────────
+async function loadData(){
+  if(!ME)return;
+  const[{data:studs},{data:skls}]=await Promise.all([
+    sb.from("students").select("*").eq("teacher_id",ME.id).order("last"),
+    sb.from("skills").select("*").eq("teacher_id",ME.id).order("created_at"),
+  ]);
+  students=studs||[];skills=skls||[];
+  if(!skills.length){
+    await sb.from("skills").insert([
+      {teacher_id:ME.id,name:"400m Run",unit:"sec",lower_better:true},
+      {teacher_id:ME.id,name:"Mile Run",unit:"min",lower_better:true},
+      {teacher_id:ME.id,name:"Distance Throw",unit:"ft",lower_better:false},
+      {teacher_id:ME.id,name:"Push-ups",unit:"reps",lower_better:false},
+      {teacher_id:ME.id,name:"Sit-ups",unit:"reps",lower_better:false},
+      {teacher_id:ME.id,name:"Hand-Eye Coord",unit:"pts",lower_better:false},
+    ]);
+    const{data:s2}=await sb.from("skills").select("*").eq("teacher_id",ME.id).order("created_at");
+    skills=s2||[];
+  }
+  entries={};
+  if(students.length){
+    const ids=students.map(s=>s.id);
+    const{data:ents}=await sb.from("entries").select("*").in("student_id",ids).order("logged_at");
+    (ents||[]).forEach(e=>{
+      if(!entries[e.student_id])entries[e.student_id]={};
+      if(!entries[e.student_id][e.skill_id])entries[e.student_id][e.skill_id]=[];
+      entries[e.student_id][e.skill_id].push(Number(e.value));
+    });
+  }
+  syncFilters();renderRoster();renderProgress();renderLB();renderStudentList();
+}
+
+function syncFilters(){
+  const periods=[...new Set(students.map(s=>s.period))].sort();
+  ["roster-period","prog-period","lb-period"].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="all">All Periods</option>'+periods.map(p=>`<option value="${p}">Period ${p}</option>`).join("");
+    if(cur)el.value=cur;
+  });
+  ["prog-skill","lb-skill"].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value;
+    el.innerHTML=skills.map(sk=>`<option value="${sk.id}">${sk.name}</option>`).join("");
+    if(cur&&skills.find(s=>s.id===cur))el.value=cur;
+  });
+}
+
+// ── ROSTER ────────────────────────────────────────────────────
+function renderRoster(){
+  const period=document.getElementById("roster-period")?.value||"all";
+  const list=period==="all"?students:students.filter(s=>s.period===+period);
+  document.getElementById("roster-count").textContent=`${list.length} students`;
+  const tb=document.getElementById("roster-body");
+  if(!list.length){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:2rem">No students yet — use CSV Upload or Add Student.</td></tr>`;return;}
+  tb.innerHTML=list.map(s=>{
+    const logged=skills.filter(sk=>getVals(s.id,sk.id).length>0).length;
+    const pct=skills.length?(logged/skills.length*100).toFixed(0):0;
+    return `<tr>
+      <td><div class="row">${avHTML(s.first,s.last,28)}<div><div style="font-weight:500;cursor:pointer;color:var(--gold)" onclick="openStudentProfile('${s.id}')">${s.first} ${s.last}</div><div style="font-size:11px;color:var(--text2)">${s.email||""}</div></div></div></td>
+      <td style="color:var(--text2)">${s.grade}</td><td style="color:var(--text2)">P${s.period}</td>
+      <td>
+        <div class="row" style="gap:6px">
+          <span class="mono badge badge-gray" style="font-size:12px;padding:3px 10px">${s.access_code||"—"}</span>
+          <button onclick="resetCode('${s.id}')" style="font-size:11px;padding:3px 8px" title="Generate new code">↻</button>
+        </div>
+      </td>
+      <td><div class="row" style="gap:6px"><div style="height:4px;width:56px;background:var(--border2);border-radius:99px;overflow:hidden"><div style="height:4px;width:${pct}%;background:var(--green);border-radius:99px"></div></div><span style="font-size:11px;color:var(--text2)">${logged}/${skills.length}</span></div></td>
+      <td><button onclick="deleteStudent('${s.id}','${s.first} ${s.last}')" style="font-size:11px;padding:3px 8px;color:var(--red);background:var(--red-lt);border-color:transparent" title="Delete student">🗑</button></td>
+    </tr>`;
+  }).join("");
+}
+
+// ── PROGRESS ──────────────────────────────────────────────────
+function renderProgress(){
+  const skid=document.getElementById("prog-skill")?.value;
+  const period=document.getElementById("prog-period")?.value||"all";
+  const sk=skills.find(s=>s.id===skid);
+  const list=period==="all"?students:students.filter(s=>s.period===+period);
+  const tb=document.getElementById("prog-body");if(!tb)return;
+  if(!list.length||!sk){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:2rem">No data yet.</td></tr>`;return;}
+  tb.innerHTML=list.map(s=>{
+    const vals=getVals(s.id,skid),imp=getImp(s.id,skid),rank=getRank(s.id,skid);
+    return `<tr>
+      <td><div class="row">${avHTML(s.first,s.last,26)}<span style="font-weight:500">${s.first} ${s.last[0]}.</span></div></td>
+      <td>${spark(vals,sk.lower_better)}</td>
+      <td style="font-weight:500">${vals.length?vals[vals.length-1]+" "+sk.unit:"—"}</td>
+      <td>${imp?`<span style="color:${imp.ok?"var(--green)":"var(--red)"};font-size:12px">${imp.ok?"▲":"▼"} ${imp.pct}%</span>`:"—"}</td>
+      <td>${rankBadge(rank)}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── LEADERBOARD ───────────────────────────────────────────────
+function renderLB(){
+  const skid=document.getElementById("lb-skill")?.value;
+  const period=document.getElementById("lb-period")?.value||"all";
+  const sk=skills.find(s=>s.id===skid);
+  const ranked=getRanked(skid,period);
+  const tag=document.getElementById("lb-tag");
+  if(tag&&sk)tag.innerHTML=`<span class="badge badge-${sk.lower_better?"gray":"green"}">${sk.lower_better?"↓ lower=better":"↑ higher=better"}</span>`;
+  const pod=document.getElementById("lb-podium");
+  if(pod&&ranked.length>=1){
+    const order=[ranked[1],ranked[0],ranked[2]].filter(Boolean);
+    const hts=[80,112,60],rnks=[2,1,3],mdls=["silver","gold","bronze"];
+    pod.innerHTML=order.map((s,i)=>{const r=rnks[i];return `<div class="podium-col">${avHTML(s.first,s.last,r===1?50:38)}<div style="font-weight:600;font-size:${r===1?15:13}px;margin:6px 0 2px">${s.first}</div><div style="font-size:12px;color:var(--text2);margin-bottom:6px">${s.val} ${sk?.unit||""}</div><span class="badge badge-${mdls[i]}">${r===1?"1st":r===2?"2nd":"3rd"}</span><div class="podium-bar" style="margin-top:8px;height:${hts[i]}px;background:${r===1?"var(--green-lt)":"var(--surface2)"}"><span style="font-size:${r===1?22:16}px;font-weight:600;color:${r===1?"var(--green)":"var(--text2)"}">#${r}</span></div></div>`;}).join("");
+  } else if(pod) pod.innerHTML="";
+  const tb=document.getElementById("lb-body");if(!tb)return;
+  if(!ranked.length){tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:2rem">No scores yet.</td></tr>`;return;}
+  tb.innerHTML=ranked.map((s,i)=>{
+    const imp=getImp(s.id,skid);
+    return `<tr style="${i===0?"background:rgba(201,168,76,0.07);border-left:2px solid var(--gold)":""}">
+      <td>${rankBadge(i+1)}</td>
+      <td><div class="row">${avHTML(s.first,s.last,26)}<span style="font-weight:${i<3?600:400}">${s.first} ${s.last}</span></div></td>
+      <td style="color:var(--text2)">P${s.period}</td>
+      <td style="font-weight:500">${s.val} ${sk?.unit||""}</td>
+      <td>${spark(getVals(s.id,skid),sk?.lower_better)}</td>
+      <td>${imp?`<span style="color:${imp.ok?"var(--green)":"var(--red)"};font-size:12px">${imp.ok?"▲":"▼"} ${imp.pct}%</span>`:"—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── STUDENT PORTAL ────────────────────────────────────────────
+function renderStudentList(){
+  const el=document.getElementById("p-list"); if(!el) return;
+
+  // Populate period filter if needed
+  const pf=document.getElementById("p-period-filter");
+  if(pf && pf.options.length<=1){
+    const periods=[...new Set(students.map(s=>s.period))].sort();
+    periods.forEach(p=>{ const o=document.createElement("option"); o.value=p; o.textContent="Period "+p; pf.appendChild(o); });
+  }
+
+  const search=(document.getElementById("p-search")?.value||"").toLowerCase().trim();
+  const period=document.getElementById("p-period-filter")?.value||"all";
+  const sort=document.getElementById("p-sort")?.value||"first";
+
+  // Filter
+  let list=students.filter(s=>{
+    const matchPeriod = period==="all" || s.period===+period;
+    const matchName   = !search || s.first.toLowerCase().includes(search) || s.last.toLowerCase().includes(search);
+    return matchPeriod && matchName;
+  });
+
+  // Sort
+  list=[...list].sort((a,b)=>sort==="last"
+    ? a.last.localeCompare(b.last)||a.first.localeCompare(b.first)
+    : a.first.localeCompare(b.first)||a.last.localeCompare(b.last)
+  );
+
+  // Count
+  const countEl=document.getElementById("p-count");
+  if(countEl) countEl.textContent=list.length===0?"No students found":list.length+" student"+(list.length===1?"":"s");
+
+  // A–Z letter jump bar
+  const alphaEl=document.getElementById("p-alpha");
+  if(alphaEl){
+    const letters=[...new Set(list.map(s=>(sort==="last"?s.last:s.first)[0].toUpperCase()))].sort();
+    alphaEl.innerHTML=letters.map(l=>`<button onclick="jumpToLetter('${l}')" style="min-width:28px;height:28px;padding:0;border-radius:6px;font-size:12px;font-weight:500;background:var(--green-lt);color:var(--green-dk);border:none;cursor:pointer">${l}</button>`).join("");
+  }
+
+  if(!list.length){
+    el.innerHTML=`<div style="text-align:center;padding:2rem;color:var(--text2);font-size:13px">No students match your search.</div>`;
+    return;
+  }
+
+  // Group by first letter for section headers
+  let lastLetter="";
+  el.innerHTML=list.map(s=>{
+    const key=(sort==="last"?s.last:s.first)[0].toUpperCase();
+    const header=key!==lastLetter?(lastLetter=key,`<div data-letter="${key}" style="font-size:11px;font-weight:600;color:var(--text3);padding:8px 4px 2px;letter-spacing:.08em">${key}</div>`):"";
+    return header+`<button onclick="pickStudent('${s.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;text-align:left;border-radius:10px;width:100%;border:1px solid var(--border)">${avHTML(s.first,s.last,38)}<div style="flex:1"><div style="font-weight:500;font-size:14px">${s.first} ${s.last}</div><div style="font-size:12px;color:var(--text2)">Grade ${s.grade} · Period ${s.period}</div></div><span style="color:var(--text2);font-size:18px">›</span></button>`;
+  }).join("");
+}
+
+function jumpToLetter(letter){
+  const el=document.getElementById("p-list");
+  const target=el?.querySelector(`[data-letter="${letter}"]`);
+  if(target) target.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function pickStudent(id){
+  portalStudent=students.find(s=>s.id===id);if(!portalStudent)return;
+  document.getElementById("p-select").classList.add("hidden");
+  document.getElementById("p-verify").classList.remove("hidden");
+  const av=document.getElementById("v-avatar");
+  av.style.cssText=avStyle(portalStudent.first,portalStudent.last,48);
+  av.textContent=portalStudent.first[0]+portalStudent.last[0];
+  document.getElementById("v-name").textContent=`${portalStudent.first} ${portalStudent.last}`;
+  document.getElementById("v-code").value="";
+  document.getElementById("v-error").classList.add("hidden");
+}
+function portalBack(){document.getElementById("p-verify").classList.add("hidden");document.getElementById("p-select").classList.remove("hidden");portalStudent=null;}
+function verifyCode(){
+  const code=document.getElementById("v-code").value.trim();
+  if(code===portalStudent.access_code){
+    document.getElementById("p-verify").classList.add("hidden");
+    document.getElementById("p-dash").classList.remove("hidden");
+    renderDash();
+  } else {
+    const err=document.getElementById("v-error");err.textContent="Incorrect code.";err.classList.remove("hidden");
+  }
+}
+function renderDash(){
+  const av=document.getElementById("d-avatar");
+  av.style.cssText=avStyle(portalStudent.first,portalStudent.last,44);
+  av.textContent=portalStudent.first[0]+portalStudent.last[0];
+  document.getElementById("d-name").textContent=`${portalStudent.first} ${portalStudent.last}`;
+  document.getElementById("d-sub").textContent=`Grade ${portalStudent.grade} · Period ${portalStudent.period}`;
+  document.getElementById("entry-fields").innerHTML=skills.map(sk=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><label style="font-size:13px;font-weight:500">${sk.name}</label><span style="font-size:12px;color:var(--text2)">${sk.unit}</span></div><input type="number" step="0.1" placeholder="Enter ${sk.unit}..." id="ef-${sk.id}"/></div>`).join("");
+  document.getElementById("p-progress").innerHTML=skills.map(sk=>{
+    const vals=getVals(portalStudent.id,sk.id),imp=getImp(portalStudent.id,sk.id),rank=getRank(portalStudent.id,sk.id);
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:13px;font-weight:500;margin-bottom:2px">${sk.name}</div><div style="font-size:12px;color:var(--text2)">${vals.length?"Latest: "+vals[vals.length-1]+" "+sk.unit:"No entries yet"}</div></div>${spark(vals,sk.lower_better)}<div style="text-align:right;min-width:52px">${rankBadge(rank)}${imp?`<div style="font-size:11px;color:${imp.ok?"var(--green)":"var(--red)"};margin-top:3px">${imp.ok?"▲":"▼"}${imp.pct}%</div>`:""}</div></div>`;
+  }).join("");
+}
+async function submitScores(){
+  const btn=document.getElementById("submit-btn");btn.disabled=true;btn.textContent="Saving…";
+  const week=`Week of ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
+  const rows=skills.filter(sk=>{const v=document.getElementById(`ef-${sk.id}`)?.value;return v!==undefined&&v!=="";}).map(sk=>({student_id:portalStudent.id,skill_id:sk.id,value:parseFloat(document.getElementById(`ef-${sk.id}`).value),week_label:week}));
+  if(rows.length){await sb.from("entries").upsert(rows,{onConflict:"student_id,skill_id,week_label"});await loadData();renderDash();}
+  const ok=document.getElementById("entry-ok");ok.classList.remove("hidden");
+  skills.forEach(sk=>{const el=document.getElementById(`ef-${sk.id}`);if(el)el.value="";});
+  setTimeout(()=>ok.classList.add("hidden"),3000);
+  btn.disabled=false;btn.textContent="Submit Scores";
+}
+function portalOut(){portalStudent=null;document.getElementById("p-dash").classList.add("hidden");document.getElementById("p-select").classList.remove("hidden");}
+
+// ── ADD STUDENT ───────────────────────────────────────────────
+async function addStudent(){
+  const first=document.getElementById("a-first").value.trim();
+  const last=document.getElementById("a-last").value.trim();
+  alert$("add-alert","");
+  if(!first||!last){alert$("add-alert","First and last name are required.");return;}
+  const grade=parseInt(document.getElementById("a-grade").value);
+  const gender=document.getElementById("a-gender").value;
+  const period=parseInt(document.getElementById("a-period").value);
+  const email=document.getElementById("a-email").value.trim()||null;
+  const code=makeCode(first,last,grade);
+  const{error}=await sb.from("students").insert([{first,last,grade,gender,period,email,access_code:code,teacher_id:ME.id}]);
+  if(error){alert$("add-alert",error.message);return;}
+  alert$("add-alert",`✓ ${first} ${last} added! Code: <span class="mono">${code}</span>`,"success");
+  ["a-first","a-last","a-email"].forEach(id=>document.getElementById(id).value="");
+  await loadData();
+  document.getElementById("recent-added").innerHTML=students.slice(-5).reverse().map(s=>`<div class="row" style="margin-bottom:8px">${avHTML(s.first,s.last,26)}<span style="font-size:13px;font-weight:500">${s.first} ${s.last}</span><span style="font-size:12px;color:var(--text2)">Gr ${s.grade} · P${s.period}</span><span class="mono badge badge-gray" style="margin-left:auto;font-size:11px">${s.access_code}</span></div>`).join("");
+}
+
+// ── CSV ───────────────────────────────────────────────────────
+function dlTemplate(){const csv="first,last,grade,gender,email,period\nAlex,Johnson,9,M,alex@school.edu,1\nMaya,Rodriguez,9,F,maya@school.edu,2";const a=document.createElement("a");a.href="data:text/csv,"+encodeURIComponent(csv);a.download="roster_template.csv";a.click();}
+function readCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.trim().split(/\r?\n/);
+    const headers=lines[0].split(",").map(h=>h.trim().toLowerCase());
+    const miss=["first","last","grade","gender","email","period"].filter(n=>!headers.includes(n));
+    if(miss.length){alert$("csv-alert","Missing columns: "+miss.join(", "));return;}
+    csvRows=lines.slice(1).filter(l=>l.trim()).map(l=>{
+      const cols=l.split(",").map(c=>c.trim());
+      const row={};headers.forEach((h,i)=>row[h]=cols[i]||"");
+      const grade=parseInt(row.grade)||9;
+      return{first:row.first,last:row.last,grade,period:parseInt(row.period)||1,gender:(row.gender||"M").toUpperCase(),email:row.email||null,access_code:makeCode(row.first,row.last,grade),teacher_id:ME.id};
+    });
+    document.getElementById("csv-count").textContent=`${csvRows.length} students ready to import`;
+    document.getElementById("csv-list").innerHTML=csvRows.map(s=>`<div class="row" style="padding:8px 12px;background:var(--surface2);border-radius:6px">${avHTML(s.first||"?",s.last||"?",28)}<span style="flex:1;font-weight:500">${s.first} ${s.last}</span><span style="color:var(--text2)">Gr ${s.grade} · P${s.period}</span><span class="mono badge badge-gray" style="font-size:11px">${s.access_code}</span></div>`).join("");
+    document.getElementById("csv-preview").classList.remove("hidden");
+    alert$("csv-alert","");
+  };
+  reader.readAsText(file);
+}
+async function importCSV(){
+  const btn=document.querySelector("#csv-preview button.primary");
+  if(btn){btn.disabled=true;btn.textContent="Importing…";}
+  let ok=0,skip=0,fail=0,firstErr="";
+  for(const s of csvRows){
+    const{error}=await sb.from("students").insert([{...s,teacher_id:ME.id}]);
+    if(error){if(error.code==="23505")skip++;else{fail++;if(!firstErr)firstErr=error.message;}}
+    else ok++;
+  }
+  await loadData();cancelCSV();
+  alert$("csv-alert",fail>0?`${ok} imported, ${skip} skipped, ${fail} failed — ${firstErr}`:`✓ ${ok} imported, ${skip} already existed.`,fail===csvRows.length?"error":"success");
+  setTimeout(()=>alert$("csv-alert",""),6000);
+  if(btn){btn.disabled=false;btn.textContent="Confirm Import";}
+}
+function cancelCSV(){csvRows=[];document.getElementById("csv-preview").classList.add("hidden");document.getElementById("csv-file").value="";}
+
+// ── EMAIL MODAL ───────────────────────────────────────────────
+function openEmailModal(){
+  sentEmails=[];
+  // Populate period filter
+  const pf = document.getElementById("email-period-filter");
+  const periods = [...new Set(students.map(s=>s.period))].sort();
+  pf.innerHTML = '<option value="all">All Periods</option>' + periods.map(p=>`<option value="${p}">Period ${p}</option>`).join("");
+  document.getElementById("modal").classList.remove("hidden");
+  renderEmailList();
+}
+
+function renderEmailList(){
+  const period = document.getElementById("email-period-filter")?.value || "all";
+  const list = period === "all" ? students : students.filter(s => s.period === +period);
+  const withEmail = list.filter(s => s.email);
+  const noEmail   = list.filter(s => !s.email);
+  document.getElementById("email-count").textContent =
+    `${withEmail.length} with email · ${noEmail.length} no email · ${sentEmails.length} sent`;
+  document.getElementById("email-list").innerHTML =
+    list.map(s=>`
+      <div class="row" style="padding:9px 12px;background:var(--surface2);border-radius:6px;margin-bottom:6px">
+        ${avHTML(s.first,s.last,28)}
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${s.first} ${s.last}</div>
+          <div style="font-size:11px;color:${s.email?"var(--text2)":"var(--red)"}">${s.email||"⚠ no email on file"}</div>
+        </div>
+        <span class="mono badge badge-gray" style="font-size:11px">${s.access_code}</span>
+        ${s.email
+          ? `<button id="eb-${s.id}" onclick="sendOne('${s.id}')" style="font-size:12px;padding:3px 10px;width:auto">Send</button>`
+          : `<span style="font-size:11px;color:var(--text3)">—</span>`
+        }
+      </div>`).join("");
+}
+
+async function sendOne(id){
+  const s = students.find(x=>x.id===id);
+  if(!s||!s.email) return;
+  const btn = document.getElementById("eb-"+id);
+  if(btn){ btn.disabled=true; btn.textContent="Sending…"; }
+
+  const teacherName = profile?.name || "Your PE Teacher";
+  const schoolName  = profile?.school || "School";
+
+  const emailHtml = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#09122B;color:#F0E6C8;padding:2rem;border-radius:12px">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div style="font-size:32px">&#127942;</div>
+      <div style="font-size:20px;font-weight:700;color:#C9A84C;letter-spacing:.06em">PE PROGRESS TRACKER</div>
+      <div style="font-size:13px;color:#A8B4CC;margin-top:4px">${schoolName}</div>
+    </div>
+    <p style="margin-bottom:1rem">Hi <strong>${s.first}</strong>,</p>
+    <p style="margin-bottom:1.5rem;color:#A8B4CC">Your access code for PE Progress Tracker is below.</p>
+    <div style="background:#1E2F5A;border:2px solid #C9A84C;border-radius:10px;padding:1.5rem;text-align:center;margin-bottom:1.5rem">
+      <div style="font-size:12px;color:#A8B4CC;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Your Access Code</div>
+      <div style="font-family:monospace;font-size:32px;font-weight:700;color:#C9A84C;letter-spacing:.12em">${s.access_code}</div>
+    </div>
+    <p style="font-size:13px;color:#A8B4CC;">Scan your teacher's QR code, pick your name, enter this code, and log your scores.</p>
+    <hr style="border:none;border-top:1px solid rgba(201,168,76,0.2);margin:1.5rem 0"/>
+    <p style="font-size:12px;color:#6B7A99;text-align:center">Keep this code private.<br>${teacherName} - ${schoolName}</p>
+  </div>`;
+
+  // Call Netlify serverless function (no CORS issues, Resend runs server-side)
+  // Function lives at /api/send-email
+  try {
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to:           s.email,
+        studentFirst: s.first,
+        studentLast:  s.last,
+        accessCode:   s.access_code,
+        teacherName:  profile?.name  || "Your Coach",
+        schoolName:   profile?.school || "",
+        period:       s.period,
+        grade:        s.grade
+      })
+    });
+    const data = await res.json();
+    if(res.ok && data.success){
+      sentEmails.push(id);
+      if(btn) btn.outerHTML = '<span class="badge badge-green">Sent ✓</span>';
+    } else {
+      throw new Error(data.error || "Unknown error");
+    }
+  } catch(e){
+    if(btn){ btn.disabled=false; btn.textContent="⚠ Failed"; }
+    alert("Email failed: " + e.message + "\n\nMake sure:\n1. api/send-email.js is in your GitHub repo\n2. RESEND_API_KEY is set in Vercel → Project → Settings → Environment Variables");
+  }
+  renderEmailList();
+
+async function sendAll(){
+  const period = document.getElementById("email-period-filter")?.value || "all";
+  const list = (period==="all"?students:students.filter(s=>s.period===+period)).filter(s=>s.email);
+  if(!list.length){ alert("No students with email addresses in this period."); return; }
+  const btn = document.querySelector("#modal button[onclick='sendAll()']");
+  if(btn){ btn.disabled=true; btn.textContent="Sending "+list.length+"…"; }
+  let ok=0, fail=0;
+  for(let i=0;i<list.length;i++){
+    const s=list[i];
+    try{
+      const res=await fetch("/api/send-email",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({to:s.email,studentFirst:s.first,studentLast:s.last,
+          accessCode:s.access_code,teacherName:profile?.name||"Coach",
+          schoolName:profile?.school||"",period:s.period,grade:s.grade})
+      });
+      const data=await res.json();
+      if(res.ok&&data.success){ sentEmails.push(s.id); ok++; }
+      else fail++;
+    }catch(e){ fail++; }
+    // Small delay between sends to respect rate limits
+    if(i<list.length-1) await new Promise(r=>setTimeout(r,200));
+    renderEmailList();
+  }
+  if(btn){ btn.disabled=false; btn.textContent="Send All"; }
+  alert("Done! "+ok+" sent"+((fail>0)?", "+fail+" failed":"")+".");
+}
+
+function closeModal(){document.getElementById("modal").classList.add("hidden");}
+
+// ── ADMIN ─────────────────────────────────────────────────────
+async function loadAdmin(){
+  if(!isAdmin())return;
+  const{data:teachers}=await sb.from("teachers").select("*").order("created_at",{ascending:false});
+  const{data:sc}=await sb.from("students").select("teacher_id");
+  const{data:ec}=await sb.from("entries").select("student_id, students(teacher_id)");
+  const sCounts={},eCounts={};
+  (sc||[]).forEach(r=>sCounts[r.teacher_id]=(sCounts[r.teacher_id]||0)+1);
+  (ec||[]).forEach(r=>{const t=r.students?.teacher_id;if(t)eCounts[t]=(eCounts[t]||0)+1;});
+  adminUsers=(teachers||[]).map(t=>({...t,sc:sCounts[t.id]||0,ec:eCounts[t.id]||0}));
+
+  const now=new Date();
+  const thisMonth=adminUsers.filter(t=>{if(!t.created_at)return false;const d=new Date(t.created_at);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}).length;
+  const totalStudents=Object.values(sCounts).reduce((a,b)=>a+b,0);
+  const totalEntries=Object.values(eCounts).reduce((a,b)=>a+b,0);
+
+  document.getElementById("admin-stats").innerHTML=[
+    {n:adminUsers.length,l:"Total Teachers",icon:"👩‍🏫"},
+    {n:thisMonth,l:"Joined This Month",icon:"🆕"},
+    {n:totalStudents,l:"Total Students",icon:"🎽"},
+    {n:totalEntries,l:"Score Entries",icon:"📊"},
+  ].map(s=>`<div class="stat-card"><div style="font-size:22px">${s.icon}</div><div class="stat-num">${s.n}</div><div class="stat-label">${s.l}</div></div>`).join("");
+
+  renderAdminUsers();renderActivity();renderQuickReset();
+}
+
+function renderAdminUsers(filter=""){
+  const list=adminUsers.filter(t=>!filter||(t.name||"").toLowerCase().includes(filter)||(t.email||"").toLowerCase().includes(filter)||(t.school||"").toLowerCase().includes(filter));
+  document.getElementById("admin-user-count").textContent=`${list.length} teachers`;
+  const tb=document.getElementById("admin-users-body");
+  if(!list.length){tb.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:2rem">No results.</td></tr>`;return;}
+  tb.innerHTML=list.map(t=>{
+    const f=(t.name||t.email||"?")[0].toUpperCase();
+    const l=(t.name||"").split(" ")[1]?.[0]?.toUpperCase()||"";
+    return `<tr>
+      <td><div class="row"><div class="avatar" style="${avStyle(f,l||f,28)}">${f}${l}</div><div><div style="font-weight:500">${t.name||"—"}</div><div style="font-size:11px;color:var(--text2)">${t.email}</div></div></div></td>
+      <td style="color:var(--text2)">${t.school||"—"}</td>
+      <td style="text-align:center"><span class="badge badge-green">${t.sc}</span></td>
+      <td style="text-align:center;color:var(--text2)">${t.ec}</td>
+      <td style="color:var(--text2);font-size:12px">${fmtDate(t.created_at)}</td>
+      <td>${t.email===ADMIN_EMAIL?'<span class="badge badge-purple">Admin</span>':'<span class="badge badge-gray">Teacher</span>'}</td>
+      <td><button onclick="adminResetFor('${t.email}')" style="font-size:11px;padding:3px 8px">Reset PW</button></td>
+    </tr>`;
+  }).join("");
+}
+function filterAdminUsers(){renderAdminUsers(document.getElementById("admin-search").value.toLowerCase());}
+
+function renderActivity(){
+  const el=document.getElementById("activity-list");if(!el)return;
+  el.innerHTML=adminUsers.slice(0,20).map(t=>`<div class="row" style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:32px;height:32px;border-radius:50%;background:var(--green-lt);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">👩‍🏫</div><div style="flex:1"><div style="font-size:13px;font-weight:500">${t.name||t.email} signed up</div><div style="font-size:12px;color:var(--text2)">${t.school||"No school set"} · ${t.sc} students</div></div><div style="font-size:12px;color:var(--text2);white-space:nowrap">${fmtDate(t.created_at)}</div></div>`).join("");
+}
+
+function renderQuickReset(){
+  const el=document.getElementById("quick-reset-list");if(!el)return;
+  el.innerHTML=adminUsers.map(t=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1;font-size:13px">${t.name||"—"} <span style="color:var(--text2)">${t.email}</span></div><button onclick="adminResetFor('${t.email}')" style="font-size:12px;padding:3px 10px">Send Reset</button></div>`).join("");
+}
+
+async function adminResetFor(email){
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+  alert$("reset-alert",error?error.message:`✓ Reset email sent to ${email}`,error?"error":"success");
+}
+async function adminSendReset(){
+  const email=document.getElementById("reset-email").value.trim();
+  if(!email){alert$("reset-alert","Enter an email address.");return;}
+  await adminResetFor(email);
+}
+function setAdminTab(t){
+  ["users","activity","reset"].forEach(id=>{
+    document.getElementById(`apane-${id}`)?.classList.toggle("hidden",id!==t);
+    document.getElementById(`atab-${id}`)?.classList.toggle("active",id===t);
+  });
+}
+
+// ── SKILLS MANAGER ────────────────────────────────────────────
+let skLowerBetter = false;
+
+function setSkDir(lb){
+  skLowerBetter = lb;
+  document.getElementById("sk-dir-high").className = lb ? "" : "primary";
+  document.getElementById("sk-dir-low").className  = lb ? "primary" : "";
+}
+
+function renderSkillsList(){
+  const el = document.getElementById("skills-list"); if(!el) return;
+  if(!skills.length){
+    el.innerHTML=`<div style="color:var(--text2);font-size:13px;padding:1rem 0;text-align:center">No skills yet. Add one on the right.</div>`;
+    return;
+  }
+  el.innerHTML = skills.map(sk=>`
+    <div class="row" style="padding:10px 12px;background:var(--surface2);border-radius:8px;gap:10px">
+      <div style="flex:1">
+        <div style="font-weight:500;font-size:13px">${sk.name}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">
+          <span style="background:var(--surface);border-radius:4px;padding:1px 6px;border:1px solid var(--border2)">${sk.unit}</span>
+          &nbsp;
+          <span style="color:${sk.lower_better?'var(--purple)':'var(--green)'}">${sk.lower_better?'↓ lower=better':'↑ higher=better'}</span>
+        </div>
+      </div>
+      <button onclick="editSkill('${sk.id}')" style="font-size:11px;padding:3px 8px">Edit</button>
+      <button onclick="deleteSkill('${sk.id}')" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red-lt);background:var(--red-lt)">×</button>
+    </div>`).join("");
+}
+
+async function addSkill(){
+  const name = document.getElementById("sk-name").value.trim();
+  const unit = document.getElementById("sk-unit").value.trim();
+  alert$("new-skill-alert","");
+  if(!name){ alert$("new-skill-alert","Skill name is required."); return; }
+  if(!unit){ alert$("new-skill-alert","Unit is required (e.g. sec, reps, ft)."); return; }
+  const{error} = await sb.from("skills").insert([{
+    teacher_id: ME.id, name, unit, lower_better: skLowerBetter
+  }]);
+  if(error){ alert$("new-skill-alert", error.message); return; }
+  document.getElementById("sk-name").value="";
+  document.getElementById("sk-unit").value="";
+  alert$("new-skill-alert", `✓ "${name}" added!`, "success");
+  setTimeout(()=>alert$("new-skill-alert",""), 3000);
+  await loadData();
+  renderSkillsList();
+}
+
+async function deleteSkill(id){
+  const sk = skills.find(s=>s.id===id);
+  if(!sk) return;
+  if(!confirm(`Delete "${sk.name}"? All student scores for this skill will also be deleted.`)) return;
+  const{error} = await sb.from("skills").delete().eq("id", id);
+  if(error){ alert$("skills-alert", error.message); return; }
+  alert$("skills-alert", `✓ "${sk.name}" deleted.`, "success");
+  setTimeout(()=>alert$("skills-alert",""), 3000);
+  await loadData();
+  renderSkillsList();
+}
+
+function editSkill(id){
+  const sk = skills.find(s=>s.id===id); if(!sk) return;
+  const newName = prompt(`Rename "${sk.name}":`, sk.name);
+  if(!newName || !newName.trim() || newName.trim()===sk.name) return;
+  const newUnit = prompt(`Unit for "${newName.trim()}":`, sk.unit);
+  if(newUnit===null) return;
+  sb.from("skills").update({name:newName.trim(), unit:newUnit.trim()||sk.unit}).eq("id",id).then(async({error})=>{
+    if(error){ alert$("skills-alert", error.message); return; }
+    alert$("skills-alert", `✓ Updated to "${newName.trim()}"`, "success");
+    setTimeout(()=>alert$("skills-alert",""), 3000);
+    await loadData();
+    renderSkillsList();
+  });
+}
+
+// ── RESET ACCESS CODE ─────────────────────────────────────────
+async function resetPeriodCodes(){
+  const period = document.getElementById("roster-period")?.value || "all";
+  const list = period === "all" ? [...students] : students.filter(s => s.period === +period);
+  const label = period === "all" ? "ALL students" : "Period " + period + " students";
+
+  if(!list.length){ alert("No students found. Check the period filter."); return; }
+  if(!confirm("Reset access codes for " + list.length + " " + label + "?\n\nEvery student gets a brand new random code. Their old codes stop working immediately.")) return;
+
+  // Show loading state on button
+  const btn = event?.target;
+  const origText = btn?.textContent;
+  if(btn){ btn.disabled=true; btn.textContent="Resetting " + list.length + " codes…"; }
+
+  let updated = 0, failed = 0;
+  for(const s of list){
+    const newCode = randomCode();
+    const { error } = await sb.from("students").update({ access_code: newCode }).eq("id", s.id);
+    if(!error){
+      const idx = students.findIndex(x => x.id === s.id);
+      if(idx > -1) students[idx].access_code = newCode;
+      updated++;
+    } else {
+      console.error("Reset failed for", s.first, s.last, error.message);
+      failed++;
+    }
+  }
+
+  if(btn){ btn.disabled=false; btn.textContent=origText||"↻ Reset Period Codes"; }
+  renderRoster();
+
+  if(failed > 0){
+    alert("⚠ " + updated + " codes reset, " + failed + " failed. Check console for details.");
+  } else {
+    alert("✓ All " + updated + " codes reset!\n\nHand out the new codes from the roster or use Email Codes to send them.");
+  }
+}
+
+async function resetCode(studentId){
+  const student = students.find(s=>s.id===studentId);
+  if(!student) return;
+
+  // Show current code and options
+  const choice = confirm(
+    `Reset access code for ${student.first} ${student.last}?\n\n` +
+    `Current code: ${student.access_code}\n\n` +
+    `Click OK to generate a new random code.\n` +
+    `Click Cancel to keep the current code.`
+  );
+  if(!choice) return;
+
+  const newCode = randomCode();
+  const{error} = await sb.from("students").update({access_code: newCode}).eq("id", studentId);
+  if(error){ alert("Error: " + error.message); return; }
+
+  // Update local state immediately
+  const idx = students.findIndex(s=>s.id===studentId);
+  if(idx>-1) students[idx].access_code = newCode;
+
+  // Show the new code clearly
+  alert(
+    `✓ New code for ${student.first} ${student.last}:\n\n` +
+    `  ${newCode}\n\n` +
+    `Give this to the student. Their old code no longer works.`
+  );
+
+  renderRoster();
+}
+
+// ── DELETE STUDENT ────────────────────────────────────────────
+async function deleteStudent(id, name){
+  if(!confirm(`Delete ${name}?
+
+This will permanently remove the student and ALL their score history. This cannot be undone.`)) return;
+  const{error} = await sb.from("students").delete().eq("id", id);
+  if(error){ alert("Error: " + error.message); return; }
+  // Remove from local state immediately so UI updates fast
+  students = students.filter(s => s.id !== id);
+  delete entries[id];
+  renderRoster();
+  renderProgress();
+  renderLB();
+  renderStudentList();
+}
+
+// ── TEACHER SHARE / MERGE ─────────────────────────────────────
+let sharedWithMe = [];   // teachers sharing their roster TO me
+let sharingWithThem = []; // teachers I am sharing TO
+let mergedStudents = []; // combined student list when sharing
+
+async function loadSharePanel(){
+  // Who I'm sharing with (outbound)
+  const{data:out} = await sb.from("teacher_shares")
+    .select("shared_with_teacher_id, teachers!teacher_shares_shared_with_teacher_id_fkey(name,email)")
+    .eq("owner_teacher_id", ME.id);
+  sharingWithThem = out||[];
+
+  // Who's sharing with me (inbound)
+  const{data:inb} = await sb.from("teacher_shares")
+    .select("owner_teacher_id, teachers!teacher_shares_owner_teacher_id_fkey(name,email), active")
+    .eq("shared_with_teacher_id", ME.id);
+  sharedWithMe = inb||[];
+
+  renderSharePanel();
+}
+
+function renderSharePanel(){
+  // Outbound list
+  const outEl = document.getElementById("share-outbound-list");
+  if(outEl){
+    if(!sharingWithThem.length){
+      outEl.innerHTML=`<div style="color:var(--text3);font-size:13px;font-style:italic">Not sharing with anyone yet.</div>`;
+    } else {
+      outEl.innerHTML = sharingWithThem.map(s=>{
+        const t = s.teachers;
+        return `<div class="row" style="padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+          <div style="flex:1"><div style="font-weight:500;font-size:13px">${t?.name||"Unknown"}</div><div style="font-size:11px;color:var(--text2)">${t?.email||""}</div></div>
+          <button onclick="revokeShare('${s.shared_with_teacher_id}')" style="font-size:11px;padding:3px 8px;color:var(--red);background:var(--red-lt);border-color:transparent">Revoke</button>
+        </div>`;
+      }).join("");
+    }
+  }
+
+  // Inbound list
+  const inbEl = document.getElementById("share-inbound-list");
+  if(inbEl){
+    if(!sharedWithMe.length){
+      inbEl.innerHTML=`<div style="color:var(--text3);font-size:13px;font-style:italic">No teachers have shared with you yet.</div>`;
+    } else {
+      inbEl.innerHTML = sharedWithMe.map(s=>{
+        const t = s.teachers;
+        const active = s.active !== false;
+        return `<div class="row" style="padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+          <div style="flex:1"><div style="font-weight:500;font-size:13px">${t?.name||"Unknown"}</div><div style="font-size:11px;color:var(--text2)">${t?.email||""}</div></div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2)">
+            <input type="checkbox" ${active?"checked":""} onchange="toggleMerge('${s.owner_teacher_id}',this.checked)" style="width:16px;height:16px;accent-color:var(--gold)"/>
+            Merge
+          </label>
+        </div>`;
+      }).join("");
+    }
+  }
+
+  // Merged count
+  const mc = document.getElementById("merged-count");
+  const activeShares = sharedWithMe.filter(s=>s.active!==false).length;
+  if(mc) mc.textContent = activeShares>0
+    ? `✓ Merging with ${activeShares} teacher${activeShares>1?"s":""} — leaderboard shows combined school results`
+    : "Enable Merge above to see school-wide rankings";
+}
+
+async function shareWithTeacher(){
+  const email = document.getElementById("share-email").value.trim();
+  alert$("share-alert","");
+  if(!email){ alert$("share-alert","Enter a teacher email."); return; }
+  if(email===ME.email){ alert$("share-alert","You can't share with yourself."); return; }
+
+  // Look up teacher by email
+  const{data:target} = await sb.from("teachers").select("id,name").eq("email",email).single();
+  if(!target){ alert$("share-alert","No teacher found with that email. They must have an account first."); return; }
+
+  const{error} = await sb.from("teacher_shares").insert([{
+    owner_teacher_id: ME.id,
+    shared_with_teacher_id: target.id,
+    active: true
+  }]);
+  if(error){
+    if(error.code==="23505") alert$("share-alert","Already sharing with this teacher.","success");
+    else alert$("share-alert", error.message);
+    return;
+  }
+  document.getElementById("share-email").value="";
+  alert$("share-alert",`✓ Sharing with ${target.name||email}! They can now see your students.`,"success");
+  await loadSharePanel();
+}
+
+async function revokeShare(targetId){
+  if(!confirm("Stop sharing your roster with this teacher?")) return;
+  await sb.from("teacher_shares").delete().eq("owner_teacher_id",ME.id).eq("shared_with_teacher_id",targetId);
+  await loadSharePanel();
+}
+
+async function toggleMerge(ownerId, active){
+  await sb.from("teacher_shares").update({active}).eq("owner_teacher_id",ownerId).eq("shared_with_teacher_id",ME.id);
+  // Reload merged students for leaderboard
+  await loadMergedStudents();
+  renderSharePanel();
+  renderLB();
+}
+
+async function loadMergedStudents(){
+  // Get all active inbound shares
+  const{data:shares} = await sb.from("teacher_shares")
+    .select("owner_teacher_id")
+    .eq("shared_with_teacher_id",ME.id)
+    .eq("active",true);
+  if(!shares||!shares.length){ mergedStudents=[]; return; }
+  const tids = shares.map(s=>s.owner_teacher_id);
+  const{data:ext} = await sb.from("students").select("*").in("teacher_id",tids);
+  mergedStudents = ext||[];
+  // Load their entries too
+  if(mergedStudents.length){
+    const ids=mergedStudents.map(s=>s.id);
+    const{data:ents}=await sb.from("entries").select("*").in("student_id",ids).order("logged_at");
+    (ents||[]).forEach(e=>{
+      if(!entries[e.student_id])entries[e.student_id]={};
+      if(!entries[e.student_id][e.skill_id])entries[e.student_id][e.skill_id]=[];
+      if(!entries[e.student_id][e.skill_id].includes(Number(e.value)))
+        entries[e.student_id][e.skill_id].push(Number(e.value));
+    });
+  }
+}
+
+// ── STUDENT PROFILE MODAL ─────────────────────────────────────
+let profileStudent = null;
+let studentGoals = {}; // { studentId: { skillId: targetValue } }
+
+function openStudentProfile(id){
+  profileStudent = students.find(s=>s.id===id);
+  if(!profileStudent) return;
+  const s = profileStudent;
+
+  // Header
+  const av = document.getElementById("sp-avatar");
+  av.style.cssText = avStyle(s.first, s.last, 48);
+  av.textContent = s.first[0]+s.last[0];
+  document.getElementById("sp-name").textContent = s.first+" "+s.last;
+  document.getElementById("sp-sub").textContent =
+    "Grade "+s.grade+" · Period "+s.period+(s.email?" · "+s.email:"");
+
+  // Stat cards
+  const totalEntries = skills.reduce((sum,sk)=>sum+getVals(s.id,sk.id).length,0);
+  const bestRank = skills.reduce((best,sk)=>{ const r=getRank(s.id,sk.id); return (r&&(!best||r<best))?r:best; },null);
+  const improving = skills.filter(sk=>{ const v=getVals(s.id,sk.id); if(v.length<2)return false; const d=v[v.length-1]-v[0]; return sk.lower_better?d<0:d>0; }).length;
+  document.getElementById("sp-stats").innerHTML = [
+    {icon:"📊", n:totalEntries, l:"Total Entries"},
+    {icon:"🏆", n:bestRank?("#"+bestRank):"—", l:"Best Rank"},
+    {icon:"📈", n:improving+"/"+skills.length, l:"Skills Improving"},
+    {icon:"📅", n:Math.max(...skills.map(sk=>getVals(s.id,sk.id).length),0)+" wks", l:"Weeks Logged"},
+  ].map(c=>`<div class="stat-card"><div style="font-size:18px">${c.icon}</div><div class="stat-num" style="font-size:20px">${c.n}</div><div class="stat-label">${c.l}</div></div>`).join("");
+
+  // Goals
+  const goals = studentGoals[s.id] || {};
+  document.getElementById("sp-goals").innerHTML = skills.map(sk=>{
+    const last = getLastVal(s.id,sk.id);
+    return `<div>
+      <label class="lbl">${sk.name} goal (${sk.unit})</label>
+      <input type="number" step="0.1" id="goal-${sk.id}"
+        placeholder="${last?("Current: "+last):"No entries yet"}"
+        value="${goals[sk.id]||""}"
+        style="font-size:14px"/>
+    </div>`;
+  }).join("");
+
+  // Skill charts
+  document.getElementById("sp-charts").innerHTML = skills.map(sk=>{
+    const vals = getVals(s.id,sk.id);
+    const rank = getRank(s.id,sk.id);
+    const imp  = getImp(s.id,sk.id);
+    const goal = goals[sk.id];
+    const last = vals.length?vals[vals.length-1]:null;
+    const best = vals.length?(sk.lower_better?Math.min(...vals):Math.max(...vals)):null;
+
+    // Mini bar chart
+    let chartHTML = "";
+    if(vals.length>0){
+      const mn=Math.min(...vals,goal||Infinity)-1;
+      const mx=Math.max(...vals,goal||0)+1;
+      const range=mx-mn||1;
+      const barW = Math.floor(Math.min(100/vals.length,18));
+      chartHTML = `<div style="display:flex;align-items:flex-end;gap:3px;height:64px;padding:0 4px;position:relative">
+        ${vals.map((v,i)=>{
+          const h = Math.max(4, Math.round(((sk.lower_better?mx-v:v-mn)/range)*56));
+          const isLast = i===vals.length-1;
+          const improving2 = i>0&&(sk.lower_better?v<vals[i-1]:v>vals[i-1]);
+          return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;max-width:${barW+8}px">
+            <div style="font-size:9px;color:var(--text3);margin-bottom:2px">${v}</div>
+            <div style="width:100%;height:${h}px;background:${isLast?"var(--gold)":improving2?"rgba(201,168,76,0.5)":"var(--surface3)"};border-radius:3px 3px 0 0;transition:height .3s"></div>
+          </div>`;
+        }).join("")}
+        ${goal?`<div style="position:absolute;left:0;right:0;height:1px;background:rgba(201,168,76,0.6);bottom:${Math.round(((sk.lower_better?mx-goal:goal-mn)/range)*56)}px" title="Goal: ${goal}">
+          <span style="position:absolute;right:0;top:-14px;font-size:9px;color:var(--gold)">🎯 ${goal}</span>
+        </div>`:""}
+      </div>`;
+    }
+
+    return `<div class="card" style="border-color:${rank===1?"rgba(201,168,76,0.4)":rank===2?"rgba(180,180,180,0.3)":"var(--border)"}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">${sk.name}</div>
+          <div style="font-size:12px;color:var(--text2)">${sk.unit} · ${sk.lower_better?"↓ lower=better":"↑ higher=better"}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          ${rankBadge(rank)}
+          ${imp?`<span style="font-size:12px;color:${imp.ok?"var(--gold)":"var(--red)"}">${imp.ok?"▲":"▼"}${imp.pct}%</span>`:""}
+        </div>
+      </div>
+      ${vals.length>0?`
+        <!-- Key stats -->
+        <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="font-size:12px"><span style="color:var(--text3)">Latest</span> <strong style="color:var(--text)">${last} ${sk.unit}</strong></div>
+          <div style="font-size:12px"><span style="color:var(--text3)">Best</span> <strong style="color:var(--gold)">${best} ${sk.unit}</strong></div>
+          ${goal?`<div style="font-size:12px"><span style="color:var(--text3)">Goal</span> <strong style="color:var(--gold)">${goal} ${sk.unit}</strong>
+            <span style="color:${(sk.lower_better?last<=goal:last>=goal)?"#4CAF50":"var(--red)"}">
+              ${(sk.lower_better?last<=goal:last>=goal)?"✓ Achieved!":"("+Math.abs(last-goal).toFixed(1)+" away)"}
+            </span></div>`:""}
+          <div style="font-size:12px"><span style="color:var(--text3)">Entries</span> <strong>${vals.length}</strong></div>
+        </div>
+        <!-- Bar chart -->
+        ${chartHTML}
+        <!-- Week labels -->
+        <div style="display:flex;gap:3px;margin-top:2px;padding:0 4px">
+          ${vals.map((_,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--text3);overflow:hidden">W${i+1}</div>`).join("")}
+        </div>
+        <!-- Trend sentence -->
+        ${imp?`<div style="margin-top:10px;font-size:12px;color:var(--text2);background:var(--surface2);padding:6px 10px;border-radius:6px">
+          ${imp.ok
+            ? `📈 Improved by <strong style="color:var(--gold)">${imp.pct}%</strong> since first entry — great progress!`
+            : `📉 Down <strong style="color:var(--red)">${imp.pct}%</strong> from first entry. Encourage consistency.`
+          }
+        </div>`:""}
+      `:`<div style="text-align:center;padding:1rem;color:var(--text3);font-size:13px">No entries yet for this skill</div>`}
+    </div>`;
+  }).join("");
+
+  document.getElementById("profile-modal").classList.remove("hidden");
+}
+
+function closeProfileModal(){
+  document.getElementById("profile-modal").classList.add("hidden");
+  profileStudent = null;
+}
+
+function saveGoals(){
+  if(!profileStudent) return;
+  const goals = {};
+  skills.forEach(sk=>{
+    const v = document.getElementById("goal-"+sk.id)?.value;
+    if(v && v!=="") goals[sk.id] = parseFloat(v);
+  });
+  studentGoals[profileStudent.id] = goals;
+  // Re-render charts with new goals
+  openStudentProfile(profileStudent.id);
+  // Show brief confirmation
+  const btn = document.querySelector("#profile-modal button.primary");
+  if(btn){ const orig=btn.textContent; btn.textContent="✓ Saved!"; setTimeout(()=>btn.textContent=orig,1500); }
+}
+
+function getImp(sid, skid){
+  const v=getVals(sid,skid);if(v.length<2)return null;
+  const sk=skills.find(s=>s.id===skid);
+  const d=v[v.length-1]-v[0];
+  return{pct:((Math.abs(d)/Math.abs(v[0]))*100).toFixed(1),ok:sk?.lower_better?d<0:d>0};
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+function setView(v){
+  ["teacher","student","leaderboard","profile","admin"].forEach(id=>{
+    document.getElementById(`view-${id}`).classList.toggle("hidden",id!==v);
+    const btn=document.getElementById(`nav-${id}`);
+    if(btn){btn.classList.remove("active","admin-active");if(id===v)btn.classList.add(id==="admin"?"admin-active":"active");}
+  });
+  if(v==="leaderboard")renderLB();
+  if(v==="student")renderStudentList();
+  if(v==="profile")renderProfileStats();
+  if(v==="admin")loadAdmin();
+}
+function setTab(t){
+  ["roster","upload","add","progress","skills","share"].forEach(id=>{
+    document.getElementById(`pane-${id}`)?.classList.toggle("hidden",id!==t);
+    document.getElementById(`tab-${id}`)?.classList.toggle("active",id===t);
+  });
+  if(t==="progress") renderProgress();
+  if(t==="skills")   renderSkillsList();
+  if(t==="share")    loadSharePanel();
+}
+
+// ── BOOT ──────────────────────────────────────────────────────
+(async()=>{
+  const{data}=await sb.auth.getSession();
+  if(data.session?.user)await bootApp(data.session.user);
+  sb.auth.onAuthStateChange((_,session)=>{if(!session&&ME)location.reload();});
+})();
+</script>
+
+<!-- STUDENT PROFILE MODAL -->
+<div id="profile-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:998;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto">
+  <div id="profile-modal-inner" style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:680px;max-height:92vh;overflow-y:auto;box-shadow:0 12px 50px rgba(0,0,0,0.5)">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:14px;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1">
+      <div id="sp-avatar" class="avatar" style="width:48px;height:48px;font-size:16px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div id="sp-name" style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--gold)"></div>
+        <div id="sp-sub" style="font-size:12px;color:var(--text2);margin-top:2px"></div>
+      </div>
+      <button onclick="closeProfileModal()" style="border:none;background:none;font-size:22px;color:var(--text2);cursor:pointer;width:auto;padding:4px 8px">×</button>
+    </div>
+
+    <div style="padding:1.25rem 1.5rem">
+
+      <!-- Stat summary row -->
+      <div id="sp-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.25rem"></div>
+
+      <!-- Goal setting -->
+      <div class="card" style="margin-bottom:1.25rem;border-color:rgba(201,168,76,0.25)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:var(--gold)">🎯 Goals</div>
+          <button onclick="saveGoals()" style="font-size:12px;padding:4px 12px;width:auto" class="primary">Save Goals</button>
+        </div>
+        <div id="sp-goals" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+      </div>
+
+      <!-- Progress charts per skill -->
+      <div id="sp-charts" style="display:flex;flex-direction:column;gap:12px"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- QR CODE MODAL -->
+<div id="qr-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:100%;max-width:480px;padding:0;border-color:var(--border2)">
+    <div class="row" style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--border)">
+      <span style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:18px;color:var(--gold)">📱 Student QR Codes</span>
+      <button onclick="closeQR()" style="margin-left:auto;border:none;background:none;font-size:22px;color:var(--text2);cursor:pointer;width:auto;padding:0">×</button>
+    </div>
+    <div style="padding:1.25rem">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Students scan the QR code or visit the link on any iPad or phone — no login needed. They pick their name, enter their code, and log scores.</div>
+
+      <!-- Period selector -->
+      <label class="lbl">Generate QR for</label>
+      <select id="qr-period" onchange="generateQR()" style="margin-bottom:16px">
+        <option value="all">All Students (whole class)</option>
+      </select>
+
+      <!-- QR Display -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:1.25rem;background:var(--surface2);border-radius:12px;border:1px solid var(--border);margin-bottom:16px">
+        <div id="qr-img-wrap" style="min-width:220px;min-height:220px;display:flex;align-items:center;justify-content:center">
+          <div style="color:var(--text3);font-size:13px">Generating…</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Or share this link</div>
+          <div id="qr-url" class="mono" style="font-size:11px;color:var(--gold);word-break:break-all;background:var(--surface);padding:8px 12px;border-radius:8px;border:1px solid var(--border)"></div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:8px">
+        <button onclick="downloadQR()" class="primary" style="flex:1;font-size:13px;padding:10px">⬇ Download QR</button>
+        <button onclick="copyLink()" style="flex:1;font-size:13px;padding:10px">📋 Copy Link</button>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">How it works</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="row" style="font-size:12px;color:var(--text2)"><span style="font-size:16px">1️⃣</span>Print or display the QR code on a screen/poster in your gym</div>
+          <div class="row" style="font-size:12px;color:var(--text2)"><span style="font-size:16px">2️⃣</span>Students scan with their iPad camera — no app needed</div>
+          <div class="row" style="font-size:12px;color:var(--text2)"><span style="font-size:16px">3️⃣</span>They pick their name, type their animal code, enter scores</div>
+          <div class="row" style="font-size:12px;color:var(--text2)"><span style="font-size:16px">4️⃣</span>Scores save live to your dashboard</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── QR CODE FUNCTIONS ─────────────────────────────────────────
+let currentQRUrl = "";
+
+function openQRModal(){
+  // Populate period options
+  const sel = document.getElementById("qr-period");
+  const periods = [...new Set(students.map(s=>s.period))].sort();
+  sel.innerHTML = '<option value="all">All Students (whole class)</option>' +
+    periods.map(p=>`<option value="${p}">Period ${p} only</option>`).join("");
+  document.getElementById("qr-modal").classList.remove("hidden");
+  generateQR();
+}
+
+function closeQR(){
+  document.getElementById("qr-modal").classList.add("hidden");
+}
+
+function generateQR(){
+  if(!ME) return;
+  const period = document.getElementById("qr-period").value;
+
+  // Build student page URL
+  const loc = window.location;
+  const base = loc.origin + loc.pathname.replace(/\/[^/]*$/, "/") + "student.html";
+  currentQRUrl = base + "?t=" + ME.id + (period !== "all" ? "&p=" + period : "");
+  document.getElementById("qr-url").textContent = currentQRUrl;
+
+  const wrap = document.getElementById("qr-img-wrap");
+  wrap.innerHTML = '<div style="color:var(--text3);font-size:13px">Generating QR…</div>';
+
+  const encoded = encodeURIComponent(currentQRUrl);
+  const src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encoded + "&bgcolor=ffffff&color=0D1B3E&margin=10&format=png";
+
+  const img = new Image();
+  img.width = 220;
+  img.height = 220;
+  img.alt = "QR Code";
+  img.style.cssText = "border-radius:8px;border:8px solid #fff;display:block";
+  img.onload = function(){ wrap.innerHTML = ""; wrap.appendChild(img); };
+  img.onerror = function(){ wrap.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:1rem">Could not load QR image.<br><br>Share this link with students instead:<br><br><a href="' + currentQRUrl + '" target="_blank" style="color:var(--gold);word-break:break-all">' + currentQRUrl + '</a></div>'; };
+  img.src = src;
+}
+
+function downloadQR(){
+  const period = document.getElementById("qr-period").value;
+  const img = document.querySelector("#qr-img-wrap img");
+  if(!img){ alert("QR not ready yet."); return; }
+  // Fetch the image and force download (avoids cross-origin open-in-tab)
+  fetch(img.src)
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement("a");
+      a.download = "pe-qr-" + (period === "all" ? "all" : "period"+period) + ".png";
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    })
+    .catch(() => {
+      // Fallback: open in new tab so user can save manually
+      window.open(img.src, "_blank");
+    });
+}
+
+function copyLink(){
+  navigator.clipboard.writeText(currentQRUrl).then(()=>{
+    const btn = event.target;
+    btn.textContent = "✓ Copied!";
+    setTimeout(()=>btn.textContent="📋 Copy Link", 2000);
+  });
+}
+</script>
+</body>
+</html>
